@@ -1,0 +1,25 @@
+{
+  "name": "aegis-escrow-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Aegis Escrow CLI — exercises the sbtc-escrow-sdk on Stacks testnet",
+  "scripts": {
+    "stats": "tsx src/index.ts stats",
+    "config": "tsx src/index.ts config",
+    "get": "tsx src/index.ts get",
+    "fee": "tsx src/index.ts fee",
+    "create": "tsx src/index.ts create",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@stacks/network": "^7.0.0",
+    "@stacks/transactions": "^7.0.0",
+    "dotenv": "^16.4.5",
+    "sbtc-escrow-sdk": "^0.3.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
