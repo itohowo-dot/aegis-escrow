@@ -24,6 +24,13 @@ export interface EscrowFeed {
 
 const PAGE = 12;
 
+/** Merge by id, newest first. Idempotent, so a repeated page can't duplicate rows. */
+function merge(prev: Escrow[], incoming: Escrow[]): Escrow[] {
+  const byId = new Map(prev.map((e) => [e.id, e]));
+  for (const e of incoming) byId.set(e.id, e);
+  return [...byId.values()].sort((a, b) => b.id - a.id);
+}
+
 /**
  * Newest-first feed of escrows.
  *
@@ -38,53 +45,59 @@ export function useEscrows(): EscrowFeed {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [wanted, setWanted] = useState(PAGE);
-  const alive = useRef(true);
+
+  // Ids already requested. Survives StrictMode's remount, so the double-invoked
+  // effect doesn't re-issue the same calls against a rate-limited API.
+  const claimed = useRef(new Set<number>());
 
   useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-    };
-  }, []);
+    let cancelled = false;
 
-  useEffect(() => {
     (async () => {
       setLoading(true);
       try {
-        const count = total ?? (await client.getEscrowCount());
-        if (!alive.current) return;
+        const count = await client.getEscrowCount();
+        if (cancelled) return;
         setTotal(count);
 
         const ids: number[] = [];
-        for (let id = count - escrows.length; id > 0 && ids.length < wanted - escrows.length; id--) {
-          ids.push(id);
+        for (let id = count; id > Math.max(0, count - wanted); id--) {
+          if (!claimed.current.has(id)) {
+            claimed.current.add(id);
+            ids.push(id);
+          }
         }
-        if (ids.length === 0) {
-          setLoading(false);
-          return;
-        }
+        if (ids.length === 0) return;
 
-        const page = (await mapLimit(ids, 4, (id) => client.getEscrow(id).catch(() => null))).filter(
-          (e): e is Escrow => e !== null,
-        );
-        if (!alive.current) return;
-        setEscrows((prev) => [...prev, ...page]);
+        const page = await mapLimit(ids, 4, async (id) => {
+          try {
+            return await client.getEscrow(id);
+          } catch {
+            claimed.current.delete(id); // let a later attempt retry this one
+            return null;
+          }
+        });
+
+        const found = page.filter((e): e is Escrow => e !== null);
+        // Merging even after cancel is harmless and idempotent — and it keeps
+        // StrictMode's discarded first pass from stranding claimed ids.
+        setEscrows((prev) => merge(prev, found));
         setError(null);
       } catch (e) {
-        if (alive.current) setError(e instanceof Error ? e.message : 'Failed to load escrows.');
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load escrows.');
       } finally {
-        if (alive.current) setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-    // Intentionally keyed on `wanted` only: each bump loads exactly one more page.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    return () => {
+      cancelled = true;
+    };
   }, [wanted]);
 
   const refreshOne = useCallback(async (id: number) => {
     const fresh = await client.getEscrow(id).catch(() => null);
-    if (fresh && alive.current) {
-      setEscrows((prev) => prev.map((e) => (e.id === id ? fresh : e)));
-    }
+    if (fresh) setEscrows((prev) => merge(prev, [fresh]));
     return fresh;
   }, []);
 
