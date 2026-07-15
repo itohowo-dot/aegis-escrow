@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { EscrowStatus, type Escrow } from 'sbtc-escrow-sdk';
 import type { EscrowFeed } from '../lib/useEscrows';
 import { formatAmount } from '../lib/config';
 import { humanizeBlocks } from '../lib/chain';
+import { useRowStagger } from '../lib/motion';
 import { Button, Pill, Skeleton } from './ui';
 import { StatusPill } from './StatusPill';
 
@@ -23,6 +24,7 @@ export function EscrowList({
 }) {
   const [filter, setFilter] = useState<Filter>('all');
   const { escrows, total, loading, error, hasMore, loadMore } = feed;
+  const listRef = useRef<HTMLElement>(null);
 
   const mineCount = useMemo(
     () => (address ? escrows.filter((e) => e.buyer === address || e.seller === address).length : 0),
@@ -37,8 +39,10 @@ export function EscrowList({
     [escrows, filter, address],
   );
 
+  useRowStagger(listRef, rows.length);
+
   return (
-    <section className="panel" aria-labelledby="list-title">
+    <section className="panel" aria-labelledby="list-title" ref={listRef}>
       <div className="panel-head list-head">
         <div>
           <h2 className="panel-title" id="list-title">
