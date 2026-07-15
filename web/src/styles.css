@@ -48,18 +48,29 @@
 
   /* shape & depth */
   --r-ctl: 8px;
-  --r-panel: 14px;
-  --shadow-panel: 0 1px 0 oklch(1 0 0 / 0.03) inset, 0 12px 32px -20px oklch(0 0 0 / 0.7);
-  --shadow-toast: 0 16px 40px -12px oklch(0 0 0 / 0.75);
+  --r-panel: 16px;
 
-  /* motion */
+  /* Material: a light source sits above the page. Every raised surface gets a
+     1px inner top highlight where that light catches its edge, and drops a
+     two-stage shadow (tight contact + wide ambient). This — not glow — is what
+     separates a real surface from a flat div. */
+  --edge-light: inset 0 1px 0 oklch(1 0 0 / 0.07);
+  --edge-light-soft: inset 0 1px 0 oklch(1 0 0 / 0.04);
+  --shadow-panel: var(--edge-light), 0 1px 2px oklch(0 0 0 / 0.5),
+    0 10px 24px -14px oklch(0 0 0 / 0.55), 0 32px 56px -32px oklch(0 0 0 / 0.7);
+  --shadow-toast: var(--edge-light), 0 2px 4px oklch(0 0 0 / 0.5),
+    0 20px 48px -12px oklch(0 0 0 / 0.8);
+  --shadow-pop: 0 2px 6px oklch(0 0 0 / 0.4), 0 12px 28px -10px oklch(0 0 0 / 0.5);
+
+  /* motion — expo-style ease-out: fast departure, long settle. No bounce. */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --dur-fast: 150ms;
-  --dur: 200ms;
+  --dur: 220ms;
 
   /* z-scale (semantic) */
   --z-sticky: 10;
   --z-toast: 40;
+  --z-grain: 60;
 }
 
 /* ------------------------------------------------------------------- base */
@@ -78,10 +89,33 @@ body {
   font-size: var(--text-base);
   line-height: 1.5;
   color: var(--ink);
-  background: var(--bg);
-  min-height: 100vh;
+  /* One ambient source above the fold, in the brand hue at low chroma — the
+     room the surfaces sit in. Deliberately not a neon blob. */
+  background:
+    radial-gradient(120% 70% at 50% -20%, oklch(0.3 0.045 60 / 0.5), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  font-optical-sizing: auto;
+}
+
+/**
+ * Film grain. A flat dark UI reads as cheap because nothing in the physical
+ * world is perfectly smooth; this puts tooth on every surface at a level you
+ * feel rather than see. pointer-events:none keeps it out of the way, and the
+ * opacity is low enough not to move any measured contrast ratio.
+ */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-grain);
+  pointer-events: none;
+  opacity: 0.032;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 a {
@@ -142,13 +176,16 @@ code {
 }
 
 /* ----------------------------------------------------------------- header */
+/* The blur here is functional, not decorative: content scrolls under a fixed
+   bar and needs to stay legible behind it. */
 .app-header {
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  background: oklch(0.16 0.012 255 / 0.92);
-  backdrop-filter: saturate(1.2) blur(8px);
+  background: oklch(0.16 0.012 255 / 0.72);
+  backdrop-filter: saturate(1.4) blur(14px);
   border-bottom: 1px solid var(--line);
+  box-shadow: 0 1px 0 oklch(1 0 0 / 0.03);
 }
 
 .header-inner {
@@ -171,7 +208,9 @@ code {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: var(--accent-soft);
+  background: linear-gradient(180deg, oklch(0.75 0.155 60 / 0.2), oklch(0.75 0.155 60 / 0.08));
+  border: 1px solid oklch(0.75 0.155 60 / 0.3);
+  box-shadow: var(--edge-light);
   color: var(--accent);
   flex: none;
 }
@@ -283,11 +322,12 @@ code {
 }
 
 .panel {
-  background: var(--surface);
+  /* a hair lighter at the top edge, where the ambient light lands */
+  background: linear-gradient(180deg, oklch(0.225 0.014 255), oklch(0.2 0.013 255));
   border: 1px solid var(--line);
   border-radius: var(--r-panel);
   box-shadow: var(--shadow-panel);
-  padding: 22px;
+  padding: 24px;
 }
 
 .panel-head {
@@ -430,9 +470,12 @@ code {
   color: var(--ink);
 }
 .seg-btn[aria-checked='true'] {
-  background: var(--surface-2);
+  background: linear-gradient(180deg, oklch(0.285 0.017 255), var(--surface-2));
   color: var(--ink);
-  box-shadow: 0 0 0 1px var(--line-strong);
+  box-shadow:
+    0 0 0 1px var(--line-strong),
+    var(--edge-light),
+    0 2px 6px -2px oklch(0 0 0 / 0.5);
 }
 
 /* ------------------------------------------------------------- fee summary */
@@ -487,8 +530,10 @@ code {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* press physics: a real button compresses, it doesn't just slide down */
 .btn:active:not(:disabled) {
-  transform: translateY(1px);
+  transform: scale(0.975);
+  transition-duration: 60ms;
 }
 .btn:disabled {
   opacity: 0.5;
@@ -496,11 +541,15 @@ code {
 }
 
 .btn-primary {
-  background: var(--accent);
+  background: linear-gradient(180deg, oklch(0.78 0.15 62), var(--accent));
   color: var(--accent-ink);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.28),
+    0 1px 2px oklch(0 0 0 / 0.4),
+    0 6px 16px -8px oklch(0.75 0.155 60 / 0.65);
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: linear-gradient(180deg, oklch(0.81 0.148 62), oklch(0.77 0.152 60));
 }
 /* faded orange reads as mud — disabled primary goes neutral instead */
 .btn-primary:disabled {
@@ -508,6 +557,7 @@ code {
   background: var(--surface-2);
   border-color: var(--line);
   color: var(--ink-3);
+  box-shadow: var(--edge-light-soft);
 }
 
 .btn-secondary {
@@ -676,10 +726,16 @@ code {
 }
 .row:hover {
   background: var(--bg-inset);
+  border-color: var(--line);
 }
+/* selection is the one place the accent earns real estate in the list */
 .row.is-selected {
-  background: var(--bg-inset);
-  border-color: var(--line-strong);
+  background: linear-gradient(90deg, var(--accent-soft), oklch(0.25 0.016 255 / 0.5) 40%);
+  border-color: var(--accent-line);
+  box-shadow: var(--edge-light-soft);
+}
+.row.is-selected .row-id {
+  color: var(--accent);
 }
 .row-id {
   grid-area: id;
@@ -835,18 +891,28 @@ code {
   }
 }
 
+/* The hero. In a money app the money is the content — everything else on this
+   panel is metadata about it, so it gets a ~3x jump over body and the tightest
+   tracking on the page. Fixed steps, not clamp: product UI shouldn't reflow
+   type with the viewport. */
 .detail-amount {
-  font-size: var(--text-lg);
-  font-weight: 650;
+  font-size: 2.25rem;
+  line-height: 1.05;
+  font-weight: 620;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-  margin: 10px 0 2px;
+  letter-spacing: -0.035em;
+  margin: 14px 0 4px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 .detail-amount .fee-note {
   font-size: var(--text-sm);
-  font-weight: 400;
-  color: var(--ink-2);
-  margin-left: 8px;
+  font-weight: 450;
+  letter-spacing: 0;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
 }
 
 .kv {
@@ -1021,6 +1087,12 @@ code {
   .layout {
     grid-template-columns: 1fr;
   }
+  /* Once the columns stack, a sticky first column stops being a companion pane
+     and becomes an overlay that pins itself over the list below — swallowing
+     clicks on the rows. Sticky only makes sense while there are two columns. */
+  .layout > .col:first-child {
+    position: static;
+  }
   .header-link {
     display: none;
   }
@@ -1048,6 +1120,13 @@ code {
 @media (max-width: 560px) {
   .container {
     padding-inline: 16px;
+  }
+  .panel {
+    padding: 18px;
+  }
+  /* step the hero down rather than let a long sBTC figure overflow */
+  .detail-amount {
+    font-size: 1.75rem;
   }
   .field-row {
     grid-template-columns: 1fr;
