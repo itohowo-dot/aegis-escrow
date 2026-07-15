@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { EscrowStatus, type Escrow, type EscrowConfig } from 'sbtc-escrow-sdk';
 import {
   releaseEscrow,
@@ -10,6 +10,7 @@ import {
 import { formatAmount, tokenSymbol } from '../lib/config';
 import { humanizeBlocks } from '../lib/chain';
 import { actionsFor, derive, statusNarrative, type Action, type Role } from '../lib/lifecycle';
+import { useDetailSwap } from '../lib/motion';
 import { shortAddress } from '../lib/wallet';
 import { Button, CopyButton, Pill, errMsg } from './ui';
 import { StatusPill } from './StatusPill';
@@ -33,6 +34,8 @@ export function EscrowDetail({
   const [busy, setBusy] = useState<string | null>(null);
   const [extending, setExtending] = useState(false);
   const [extraBlocks, setExtraBlocks] = useState('144');
+  const panelRef = useRef<HTMLElement>(null);
+  useDetailSwap(panelRef, escrow.id);
 
   const role: Role =
     address && escrow.buyer === address
@@ -85,7 +88,7 @@ export function EscrowDetail({
     k === 'release' ? 'primary' : k === 'dispute' ? 'danger' : 'secondary';
 
   return (
-    <section className="panel" aria-labelledby="detail-title">
+    <section className="panel" aria-labelledby="detail-title" ref={panelRef}>
       <div className="detail-head">
         <h2 className="panel-title" id="detail-title">
           Escrow #{escrow.id}
