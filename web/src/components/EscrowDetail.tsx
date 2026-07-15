@@ -222,7 +222,11 @@ function Timeline({
 
   const steps: { label: string; block: number | null; done: boolean; note?: string }[] = [
     { label: 'Created', block: escrow.createdAt, done: true },
-    {
+  ];
+
+  // Only worth a row if it happened, or if it's still a possible next move.
+  if (d.deliveredAt !== null || d.isOpen) {
+    steps.push({
       label: 'Delivery signaled',
       block: d.deliveredAt,
       done: d.deliveredAt !== null,
@@ -232,8 +236,8 @@ function Timeline({
             ? `review closes at block ${d.reviewEndsAt.toLocaleString()}`
             : 'review window closed'
           : 'seller hasn’t marked delivery',
-    },
-  ];
+    });
+  }
 
   if (d.completedAt !== null || d.disputedAt !== null || !d.isOpen) {
     steps.push({
@@ -269,8 +273,10 @@ function Timeline({
         {steps.map((s) => (
           <li key={s.label} className={s.done ? 'is-done' : ''}>
             <span className="tl-label">{s.label}</span>
+            {/* the contract doesn't always record a block for settlement — say
+                nothing rather than showing a dash that reads like a failure */}
             <span className="tl-block tnum">
-              {s.block !== null ? `block ${s.block.toLocaleString()}` : '—'}
+              {s.block !== null ? `block ${s.block.toLocaleString()}` : ''}
             </span>
             {s.note && <span className="tl-note">{s.note}</span>}
           </li>
