@@ -146,11 +146,12 @@ function Row({
       >
         <span className="row-id tnum">#{escrow.id}</span>
         <span className="row-amount tnum">{formatAmount(escrow.amount, escrow.tokenType)}</span>
+        {/* status + role travel together so the row can fold onto two lines */}
         <span className="row-status">
           <StatusPill status={escrow.status} />
           {isOpen && expired && <Pill tone="err">Expired</Pill>}
+          {role && <span className="row-role">{role}</span>}
         </span>
-        {role && <span className="row-role">{role}</span>}
         <span className="row-time">
           {isOpen && toExpiry !== null
             ? expired
@@ -171,7 +172,6 @@ function RowSkeletons() {
           <Skeleton w={28} />
           <Skeleton w={92} />
           <Skeleton w={70} h={20} />
-          <span />
           <Skeleton w={54} />
         </li>
       ))}
