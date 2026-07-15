@@ -660,7 +660,8 @@ code {
   text-align: left;
   width: 100%;
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto auto 76px;
+  grid-template-columns: 40px minmax(0, 1fr) auto auto;
+  grid-template-areas: 'id amount status time';
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
@@ -681,17 +682,21 @@ code {
   border-color: var(--line-strong);
 }
 .row-id {
+  grid-area: id;
   color: var(--ink-3);
   font-size: var(--text-sm);
 }
 .row-amount {
+  grid-area: amount;
   font-weight: 550;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .row-status {
+  grid-area: status;
   display: inline-flex;
+  align-items: center;
   gap: 6px;
   flex-wrap: wrap;
 }
@@ -701,10 +706,12 @@ code {
   color: var(--info);
 }
 .row-time {
+  grid-area: time;
   font-size: var(--text-xs);
   color: var(--ink-3);
   text-align: right;
   font-variant-numeric: tabular-nums;
+  min-width: 72px;
 }
 .row-skel {
   cursor: default;
@@ -1019,6 +1026,25 @@ code {
   }
 }
 
+@media (max-width: 640px) {
+  /* four columns can't hold an amount + pills at phone widths — fold the row
+     onto two lines instead of ellipsing the number the user came to read */
+  .row {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'id amount'
+      'status time';
+    gap: 8px 10px;
+    padding: 12px;
+  }
+  .row-time {
+    align-self: center;
+  }
+  .row-skel .skel:nth-child(2) {
+    width: 70% !important;
+  }
+}
+
 @media (max-width: 560px) {
   .container {
     padding-inline: 16px;
@@ -1027,10 +1053,19 @@ code {
     grid-template-columns: 1fr;
   }
   .kv {
-    grid-template-columns: 110px 1fr;
+    grid-template-columns: 96px 1fr;
   }
   .brand-name {
     font-size: var(--text-base);
+  }
+  .list-head {
+    gap: 10px;
+  }
+  .rows-foot {
+    flex-wrap: wrap;
+  }
+  .extend-row .input-unit {
+    width: 100%;
   }
 }
 
