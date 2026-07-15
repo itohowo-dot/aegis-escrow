@@ -15,6 +15,13 @@ import gsap from 'gsap';
  * Note we check reduced-motion directly rather than via gsap.matchMedia(): its
  * cleanup reverts, and these effects re-run on every data change, so a revert
  * would snap in-flight tweens back and cancel the very animation it set up.
+ *
+ * Everything uses fromTo() with BOTH endpoints stated, never from(). from()
+ * infers its destination from whatever the element's opacity happens to be when
+ * it runs — so if it fires while an earlier tween is mid-flight (StrictMode's
+ * double-invoke, or a user clicking through escrows quickly) it records the
+ * in-between value as the target and strands the element there. A panel frozen
+ * at 13% opacity is not a hypothetical; it's what this did before.
  */
 
 const wantsMotion = () =>
@@ -44,15 +51,20 @@ export function useRowStagger(scope: React.RefObject<HTMLElement>, count: number
     const rows = gsap.utils.toArray<HTMLElement>('.row', scope.current).slice(from);
     if (!rows.length) return;
 
-    gsap.from(rows, {
-      opacity: 0,
-      y: 8,
-      duration: 0.45,
-      ease: 'expo.out',
-      // 30ms reads as a wave; more and the list feels slow to arrive
-      stagger: 0.03,
-      clearProps: 'all',
-    });
+    gsap.fromTo(
+      rows,
+      { opacity: 0, y: 8 },
+      {
+        opacity: 1,
+        y: 0,
+        duration: 0.45,
+        ease: 'expo.out',
+        // 30ms reads as a wave; more and the list feels slow to arrive
+        stagger: 0.03,
+        overwrite: 'auto',
+        clearProps: 'all',
+      },
+    );
   }, [scope, count]);
 }
 
