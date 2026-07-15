@@ -74,12 +74,12 @@ function sbtcUserPc(sender: string, amount: number) {
   return Pc.principal(sender).willSendLte(amount).ft(`${address}.${name}`, 'sbtc-token');
 }
 
-/** release — buyer sends the locked funds on to the seller. */
+/** release — buyer only. Valid from PENDING and (v7+) DELIVERED. */
 export function releaseEscrow(escrowId: number): Promise<string> {
   return simpleAction('release', escrowId, 'allow');
 }
 
-/** refund — seller anytime; buyer only after expiry (the contract enforces this). */
+/** refund — seller anytime; buyer only after expiry + any review window. */
 export function refundEscrow(escrowId: number): Promise<string> {
   return simpleAction('refund', escrowId, 'allow');
 }
@@ -87,6 +87,23 @@ export function refundEscrow(escrowId: number): Promise<string> {
 /** dispute — buyer or seller flags the escrow for resolution. No funds move yet. */
 export function disputeEscrow(escrowId: number): Promise<string> {
   return simpleAction('dispute', escrowId, 'deny');
+}
+
+/** deliver — seller signals delivery from PENDING, opening the review window. */
+export function deliverEscrow(escrowId: number): Promise<string> {
+  return simpleAction('deliver', escrowId, 'deny');
+}
+
+/** extend-escrow — buyer pushes expiry out. Pending only, before expiry. */
+export async function extendEscrow(escrowId: number, additionalBlocks: number): Promise<string> {
+  const res = await request('stx_callContract', {
+    contract: CONTRACT_ID,
+    functionName: 'extend-escrow',
+    functionArgs: [Cl.uint(escrowId), Cl.uint(additionalBlocks)],
+    postConditionMode: 'deny',
+    network: NETWORK,
+  });
+  return requireTxid(res);
 }
 
 /** Shared shape for the single-uint-arg state transitions. */
