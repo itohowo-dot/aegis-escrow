@@ -76,16 +76,26 @@ export function useRowStagger(scope: React.RefObject<HTMLElement>, count: number
  */
 export function useDetailSwap(scope: React.RefObject<HTMLElement>, id: number) {
   useEffect(() => {
-    if (!wantsMotion()) return;
-    gsap.from(scope.current, { opacity: 0, y: 10, duration: 0.4, ease: 'expo.out' });
-    gsap.from(gsap.utils.toArray<HTMLElement>('.tl li', scope.current), {
-      opacity: 0,
-      x: -6,
-      duration: 0.4,
-      ease: 'expo.out',
-      stagger: 0.05,
-      delay: 0.08,
-      clearProps: 'all',
-    });
+    if (!wantsMotion() || !scope.current) return;
+
+    gsap.fromTo(
+      scope.current,
+      { opacity: 0, y: 10 },
+      { opacity: 1, y: 0, duration: 0.4, ease: 'expo.out', overwrite: 'auto', clearProps: 'all' },
+    );
+    gsap.fromTo(
+      gsap.utils.toArray<HTMLElement>('.tl li', scope.current),
+      { opacity: 0, x: -6 },
+      {
+        opacity: 1,
+        x: 0,
+        duration: 0.4,
+        ease: 'expo.out',
+        stagger: 0.05,
+        delay: 0.08,
+        overwrite: 'auto',
+        clearProps: 'all',
+      },
+    );
   }, [scope, id]);
 }
